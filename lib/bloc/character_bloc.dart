@@ -10,18 +10,19 @@ part 'character_state.dart';
 
 class CharacterBloc extends Bloc<CharacterEvent, CharacterState> {
   final CharacterRepo characterRepo;
-  CharacterBloc({required this.characterRepo}) 
-  : super(const CharacterState.loading()) {
+  CharacterBloc({required this.characterRepo})
+      : super(const CharacterState.loading()) {
     on<CharacterEventFetch>((event, emit) async {
       emit(const CharacterState.loading());
       try {
-        Character _characterLoaded = 
-          await characterRepo.getCharacter(event.page, event.name);
-          emit(CharacterState.loaded(characterLoaded: _characterLoaded));
-      }catch(_) {
+        Character _characterLoaded = await characterRepo
+            .getCharacter(event.page, event.name)
+            .timeout(const Duration(seconds: 5));
+        emit(CharacterState.loaded(characterLoaded: _characterLoaded));
+      } catch (_) {
         emit(const CharacterState.error());
+        rethrow;
       }
     });
   }
-
 }
