@@ -1,5 +1,8 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:hydrated_bloc/hydrated_bloc.dart';
 import 'package:pull_to_refresh/pull_to_refresh.dart';
 import 'package:rick_and_morty_search/data/models/character.dart';
 
@@ -22,14 +25,19 @@ class _SearchPageState extends State<SearchPage> {
   final RefreshController refreshController = RefreshController();
   bool _isPagination = false;
 
+  Timer? searchDebounce;
+
+  final _storage = HydratedBlocOverrides.current?.storage;
+
   @override
   void initState() {
-    if (_currentResults.isEmpty) {
-      context
-          .read<CharacterBloc>()
-          .add(const CharacterEvent.fetch(name: '', page: 1));
+    if (_storage.runtimeType.toString().isEmpty) {
+      if (_currentResults.isEmpty) {
+        context
+            .read<CharacterBloc>()
+            .add(const CharacterEvent.fetch(name: '', page: 1));
+      }
     }
-
     super.initState();
   }
 
@@ -61,21 +69,23 @@ class _SearchPageState extends State<SearchPage> {
               _currentPage = 1;
               _currentResults = [];
               _currentSearchStr = value;
-
-              context
-                  .read<CharacterBloc>()
-                  .add(CharacterEvent.fetch(name: value, page: _currentPage));
+              searchDebounce?.cancel();
+              searchDebounce = Timer(const Duration(milliseconds: 500), () {
+                context
+                    .read<CharacterBloc>()
+                    .add(CharacterEvent.fetch(name: value, page: _currentPage));
+              });
             },
           ),
         ),
         Expanded(
           child: state.when(
             loading: () {
-              if (!_isPagination) {
+               if (!_isPagination) {
                 return Center(
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
+                    children: const [
                       CircularProgressIndicator(strokeWidth: 2),
                       SizedBox(width: 10),
                       Text('Loading...'),
@@ -92,7 +102,7 @@ class _SearchPageState extends State<SearchPage> {
                 _currentResults.addAll(_currentCharacter.results);
                 refreshController.loadComplete();
                 _isPagination = false;
-              }else {
+              } else {
                 _currentResults = _currentCharacter.results;
               }
 
